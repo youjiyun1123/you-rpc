@@ -1,5 +1,6 @@
 package com.you.yourpc.consumer;
 
+import com.you.yourpc.api.Add;
 import com.you.yourpc.codec.RequestEncoder;
 import com.you.yourpc.message.Request;
 import com.you.yourpc.message.Response;
@@ -15,34 +16,38 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 
 import java.util.concurrent.CompletableFuture;
 
-public class Consumer {
-    public int add(int a, int b) throws Exception {
-        CompletableFuture<Integer> addResultFuture = new CompletableFuture<>();
-        Bootstrap bootstrap = new Bootstrap();
-        bootstrap.group(new NioEventLoopGroup(4))
-                .channel(NioSocketChannel.class)
-                .handler(new ChannelInitializer<NioSocketChannel>() {
+public class Consumer implements Add {
+    public int add(int a, int b) {
+        try {
+            CompletableFuture<Integer> addResultFuture = new CompletableFuture<>();
+            Bootstrap bootstrap = new Bootstrap();
+            bootstrap.group(new NioEventLoopGroup(4))
+                    .channel(NioSocketChannel.class)
+                    .handler(new ChannelInitializer<NioSocketChannel>() {
 
-                    protected void initChannel(NioSocketChannel nioSocketChannel) throws Exception {
-                        nioSocketChannel.pipeline()
-                                .addLast(new XYDecoder())
-                                .addLast(new RequestEncoder())
-                                .addLast(new SimpleChannelInboundHandler<Response>() {
-                                    protected void channelRead0(ChannelHandlerContext channelHandlerContext, Response response) throws Exception {
-                                        System.out.println(response);
-                                        int result = Integer.valueOf(response.getResult().toString());
-                                        addResultFuture.complete(result);
-                                    }
-                                });
-                    }
-                });
-        ChannelFuture channelFuture = bootstrap.connect("localhost", 8888).sync();
-        Request request = new Request();
-        request.setMethodName("aaa");
-        request.setParams(new Object[]{1, 2});
-        request.setParamsClass(new String[]{"int", "int"});
-        request.setServiceName("bbb");
-        channelFuture.channel().writeAndFlush(request);
-        return addResultFuture.get();
+                        protected void initChannel(NioSocketChannel nioSocketChannel) throws Exception {
+                            nioSocketChannel.pipeline()
+                                    .addLast(new XYDecoder())
+                                    .addLast(new RequestEncoder())
+                                    .addLast(new SimpleChannelInboundHandler<Response>() {
+                                        protected void channelRead0(ChannelHandlerContext channelHandlerContext, Response response) throws Exception {
+                                            System.out.println(response);
+                                            addResultFuture.complete(Integer.valueOf(response.getResult().toString()));
+                                        }
+                                    });
+                        }
+                    });
+            ChannelFuture channelFuture = bootstrap.connect("localhost", 8888).sync();
+            Request request = new Request();
+            request.setMethodName("add");
+            request.setParams(new Object[]{a, b});
+            request.setParamsClass(new Class[]{int.class, int.class});
+            request.setServiceName(Add.class.getName());
+            channelFuture.channel().writeAndFlush(request);
+            return addResultFuture.get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
     }
 }

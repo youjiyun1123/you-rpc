@@ -1,6 +1,7 @@
 package com.you.yourpc.codec;
 
 import com.alibaba.fastjson2.JSONObject;
+import com.alibaba.fastjson2.JSONReader;
 import com.you.yourpc.message.Message;
 import com.you.yourpc.message.Request;
 import com.you.yourpc.message.Response;
@@ -48,6 +49,6 @@ public class XYDecoder extends LengthFieldBasedFrameDecoder {
 
     private Object deserializeRequest(byte[] body) {
         String jsonStr = new String(body, StandardCharsets.UTF_8);
-        return JSONObject.parseObject(jsonStr, Request.class);
+        return JSONObject.parseObject(jsonStr, Request.class, JSONReader.Feature.SupportClassForName);
     }
 }

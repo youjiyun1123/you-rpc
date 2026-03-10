@@ -8,6 +8,6 @@ import java.util.Objects;
 public class Request {
     private String serviceName;
     private String methodName;
-    private String[] paramsClass;
+    private Class[] paramsClass;
     private Object[] params;
 }

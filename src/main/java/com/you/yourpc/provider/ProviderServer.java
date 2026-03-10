@@ -12,11 +12,18 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 
 public class ProviderServer {
     private final int port;
+    private final ProviderRegister register;
     private EventLoopGroup bossEventLoopGroup;
     private EventLoopGroup workEventLoopGroup;
 
+
     public ProviderServer(int port) {
         this.port = port;
+        this.register = new ProviderRegister();
+    }
+
+    public <I> void register(Class<I> interfaceClass, I serviceInstance) {
+        register.register(interfaceClass, serviceInstance);
     }
 
     public void start() {
@@ -34,9 +41,10 @@ public class ProviderServer {
                                     .addLast(new SimpleChannelInboundHandler<Request>() {
                                         // add,1,2
                                         protected void channelRead0(ChannelHandlerContext channelHandlerContext, Request request) throws Exception {
-                                            System.out.println(request);
-                                            Response response=new Response();
-                                            response.setResult(1);
+                                            ProviderRegister.Invocation<?> service = register.findService(request.getServiceName());
+                                            Object result = service.invoke(request.getMethodName(), request.getParamsClass(),request.getParams());
+                                            Response response = new Response();
+                                            response.setResult(result);
                                             channelHandlerContext.writeAndFlush(response);
                                         }
                                     });
@@ -60,7 +68,4 @@ public class ProviderServer {
     }
 
 
-    private static int add(int a, int b) {
-        return a + b;
-    }
 }
