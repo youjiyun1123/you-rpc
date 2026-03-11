@@ -55,16 +55,16 @@ public class ProviderServer {
         protected void channelRead0(ChannelHandlerContext channelHandlerContext, Request request) throws Exception {
             ProviderRegister.Invocation<?> invocation = register.findService(request.getServiceName());
             if (invocation == null) {
-                Response failResp = Response.fail(String.format("%s 没有对于的处理服务", request.getServiceName()));
+                Response failResp = Response.fail(String.format("%s 没有对应的处理服务", request.getServiceName()), request.getRequestId());
                 channelHandlerContext.writeAndFlush(failResp);
                 return;
             }
             try {
                 Object result = invocation.invoke(request.getMethodName(), request.getParamsClass(), request.getParams());
                 log.info("{},函数被调用了{},结果是{}",request.getServiceName(),request.getMethodName(),result);
-                channelHandlerContext.writeAndFlush(Response.success(result));
+                channelHandlerContext.writeAndFlush(Response.success(result,request.getRequestId()));
             } catch (Exception e) {
-                Response failResp = Response.fail(e.getMessage());
+                Response failResp = Response.fail(e.getMessage(), request.getRequestId());
                 channelHandlerContext.writeAndFlush(failResp);
             }
         }

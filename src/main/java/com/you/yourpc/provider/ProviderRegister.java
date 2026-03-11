@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class ProviderRegister {
-    private Map<String, Invocation<?>> serviceInstanceMap = new ConcurrentHashMap<>();
+    private final Map<String, Invocation<?>> serviceInstanceMap = new ConcurrentHashMap<>();
 
     public <I> void register(Class<I> interfaceClass, I serviceInstance) {
         if (!interfaceClass.isInterface()) {
