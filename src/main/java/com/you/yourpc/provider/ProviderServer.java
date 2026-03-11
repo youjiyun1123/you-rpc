@@ -9,7 +9,9 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class ProviderServer {
     private final int port;
     private final ProviderRegister register;
@@ -38,16 +40,7 @@ public class ProviderServer {
                             nioSocketChannel.pipeline()
                                     .addLast(new XYDecoder())
                                     .addLast(new ResponseEncoder())
-                                    .addLast(new SimpleChannelInboundHandler<Request>() {
-                                        // add,1,2
-                                        protected void channelRead0(ChannelHandlerContext channelHandlerContext, Request request) throws Exception {
-                                            ProviderRegister.Invocation<?> service = register.findService(request.getServiceName());
-                                            Object result = service.invoke(request.getMethodName(), request.getParamsClass(),request.getParams());
-                                            Response response = new Response();
-                                            response.setResult(result);
-                                            channelHandlerContext.writeAndFlush(response);
-                                        }
-                                    });
+                                    .addLast(new ProviderHandler());
 
                         }
                     });
@@ -56,6 +49,41 @@ public class ProviderServer {
             throw new RuntimeException("服务器启动异常", e);
         }
 
+    }
+
+    public class ProviderHandler extends SimpleChannelInboundHandler<Request> {
+        protected void channelRead0(ChannelHandlerContext channelHandlerContext, Request request) throws Exception {
+            ProviderRegister.Invocation<?> invocation = register.findService(request.getServiceName());
+            if (invocation == null) {
+                Response failResp = Response.fail(String.format("%s 没有对于的处理服务", request.getServiceName()));
+                channelHandlerContext.writeAndFlush(failResp);
+                return;
+            }
+            try {
+                Object result = invocation.invoke(request.getMethodName(), request.getParamsClass(), request.getParams());
+                log.info("{},函数被调用了{},结果是{}",request.getServiceName(),request.getMethodName(),result);
+                channelHandlerContext.writeAndFlush(Response.success(result));
+            } catch (Exception e) {
+                Response failResp = Response.fail(e.getMessage());
+                channelHandlerContext.writeAndFlush(failResp);
+            }
+        }
+
+        @Override
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+           log.info("地址:{}连接了",ctx.channel().remoteAddress());
+        }
+
+        @Override
+        public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+            log.info("地址:{}断开了连接了",ctx.channel().remoteAddress());
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+            log.error("发生了异常",cause);
+            super.exceptionCaught(ctx, cause);
+        }
     }
 
     public void stop() {
