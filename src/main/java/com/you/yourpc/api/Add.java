@@ -1,7 +1,8 @@
 package com.you.yourpc.api;
 
 public interface Add {
-    int add(int a, int b);
+    Integer add(int a, int b);
 
+    Integer minus(int a, int b);
 
 }

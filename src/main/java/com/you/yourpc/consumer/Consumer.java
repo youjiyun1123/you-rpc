@@ -11,15 +11,16 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-
+@Slf4j
 public class Consumer implements Add {
     //在途请求
-    private final Map<Integer, CompletableFuture<?>> inFlightRequestTable = new ConcurrentHashMap<>();
+    private final Map<Integer, CompletableFuture<Response>> inFlightRequestTable = new ConcurrentHashMap<>();
     private ConnectionManager manager=new ConnectionManager(createBootstrap());
 
     private Bootstrap createBootstrap() {
@@ -34,12 +35,12 @@ public class Consumer implements Add {
                                 .addLast(new RequestEncoder())
                                 .addLast(new SimpleChannelInboundHandler<Response>() {
                                     protected void channelRead0(ChannelHandlerContext channelHandlerContext, Response response) throws Exception {
-                                        CompletableFuture requestFuture = inFlightRequestTable.remove(response.getRequestId());
-                                        if (response.getCode() == 200) {
-                                            requestFuture.complete(Integer.valueOf(response.getResult().toString()));
-                                        } else {
-                                            requestFuture.completeExceptionally(new RpcException(response.getErrorMessage()));
+                                        CompletableFuture<Response> responseFuture = inFlightRequestTable.remove(response.getRequestId());
+                                        if (responseFuture==null) {
+                                            log.warn("requestId{}找不到",response.getRequestId());
+                                            return;
                                         }
+                                        responseFuture.complete(response);
                                     }
                                 });
                     }
@@ -47,9 +48,9 @@ public class Consumer implements Add {
         return bootstrap;
     }
 
-    public int add(int a, int b) {
+    public Integer add(int a, int b) {
         try {
-            CompletableFuture<Integer> addResultFuture = new CompletableFuture<>();
+            CompletableFuture<Response> responseFuture = new CompletableFuture<>();
             Channel channel = manager.getChannel("localhost", 8888);
             if (channel == null) {
                 throw new RpcException("provider 连接失败");
@@ -61,13 +62,26 @@ public class Consumer implements Add {
             request.setServiceName(Add.class.getName());
             channel.writeAndFlush(request).addListener((f) -> {
                 if (f.isSuccess()) {
-                    inFlightRequestTable.put(request.getRequestId(), addResultFuture);
+                    inFlightRequestTable.put(request.getRequestId(), responseFuture);
                 }
             });
-            return addResultFuture.get(3, TimeUnit.SECONDS);
-        } catch (Exception e) {
+            Response response = responseFuture.get(3, TimeUnit.SECONDS);
+            if (response.getCode() == 200) {
+               return (Integer) response.getResult();
+            } else {
+              throw new RpcException(response.getErrorMessage());
+            }
+        }catch (RpcException rpcException){
+            throw rpcException;
+        }
+        catch (Exception e) {
             throw new RuntimeException(e);
         }
 
+    }
+
+    @Override
+    public Integer minus(int a, int b) {
+        return null;
     }
 }
