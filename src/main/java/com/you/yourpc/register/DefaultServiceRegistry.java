@@ -8,21 +8,21 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-public class DefaultServiceRegister implements ServiceRegister {
+public class DefaultServiceRegistry implements ServiceRegistry {
 
-    private ServiceRegister delegate;
+    private ServiceRegistry delegate;
     private final Map<String, List<ServiceMetadata>> cache = new ConcurrentHashMap<>();
 
     @Override
-    public void init(RegisterConfig config) throws Exception {
-        this.delegate = createServiceRegister(config);
+    public void init(RegistryConfig config) throws Exception {
+        this.delegate = createServiceRegistry(config);
         this.delegate.init(config);
     }
 
     @Override
-    public void registerService(ServiceMetadata metadata) {
+    public void registryService(ServiceMetadata metadata) {
         log.info("向{} 注册了一个Service{}", delegate.getClass(), metadata.getServiceName());
-        delegate.registerService(metadata);
+        delegate.registryService(metadata);
     }
 
     @Override
@@ -37,13 +37,13 @@ public class DefaultServiceRegister implements ServiceRegister {
         }
     }
 
-    private ServiceRegister createServiceRegister(RegisterConfig config) {
-        if (config.getRegisterType().equals("zookeeper")) {
-            return new ZookeeperServiceRegister();
+    private ServiceRegistry createServiceRegistry(RegistryConfig config) {
+        if (config.getRegistryType().equals("zookeeper")) {
+            return new ZookeeperServiceRegistry();
         }
-        if (config.getRegisterType().equals("redis")) {
-            return new RedisServiceRegister();
+        if (config.getRegistryType().equals("redis")) {
+            return new RedisServiceRegistry();
         }
-        throw new IllegalArgumentException(config.getRegisterType() + "没有实现");
+        throw new IllegalArgumentException(config.getRegistryType() + "没有实现");
     }
 }

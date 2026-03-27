@@ -17,32 +17,28 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class ProviderServer {
-    private final int port;
-    private final String host;
-    private final ProviderRegister register;
-    private final ServiceRegister serviceRegister;
-    private final RegisterConfig registerConfig;
+    private final ProviderProperties properties;
+    private final ProviderRegistry registry;
+    private final ServiceRegistry serviceRegistry;
     private EventLoopGroup bossEventLoopGroup;
     private EventLoopGroup workEventLoopGroup;
 
 
-    public ProviderServer(String host, int port, RegisterConfig registerConfig) {
-        this.host = host;
-        this.port = port;
-        this.register = new ProviderRegister();
-        this.serviceRegister = new DefaultServiceRegister();
-        this.registerConfig = registerConfig;
+    public ProviderServer(ProviderProperties providerProperties) {
+        this.properties = providerProperties;
+        this.registry = new ProviderRegistry();
+        this.serviceRegistry = new DefaultServiceRegistry();
     }
 
     public <I> void register(Class<I> interfaceClass, I serviceInstance) {
-        register.register(interfaceClass, serviceInstance);
+        registry.register(interfaceClass, serviceInstance);
     }
 
     public void start() {
         bossEventLoopGroup = new NioEventLoopGroup();
-        workEventLoopGroup = new NioEventLoopGroup(4);
+        workEventLoopGroup = new NioEventLoopGroup(properties.getWorkThreadNum());
         try {
-            serviceRegister.init(registerConfig);
+            serviceRegistry.init(properties.getRegistryConfig());
             ServerBootstrap serverBootstrap = new ServerBootstrap();
             serverBootstrap.group(bossEventLoopGroup, workEventLoopGroup)
                     .channel(NioServerSocketChannel.class)
@@ -55,9 +51,9 @@ public class ProviderServer {
 
                         }
                     });
-            serverBootstrap.bind(port).sync();
+            serverBootstrap.bind(properties.getHost(), properties.getPort()).sync();
             //注册服务
-            register.allServiceName().stream().map(this::buildMetadata).forEach(this.serviceRegister::registerService);
+            registry.allServiceName().stream().map(this::buildMetadata).forEach(this.serviceRegistry::registryService);
         } catch (Exception e) {
             throw new RuntimeException("服务器启动异常", e);
         }
@@ -67,14 +63,14 @@ public class ProviderServer {
     private ServiceMetadata buildMetadata(String serviceName) {
         ServiceMetadata metadata = new ServiceMetadata();
         metadata.setServiceName(serviceName);
-        metadata.setPort(port);
-        metadata.setHost(host);
+        metadata.setPort(properties.getPort());
+        metadata.setHost(properties.getHost());
         return metadata;
     }
 
     public class ProviderHandler extends SimpleChannelInboundHandler<Request> {
         protected void channelRead0(ChannelHandlerContext channelHandlerContext, Request request) throws Exception {
-            ProviderRegister.Invocation<?> invocation = register.findService(request.getServiceName());
+            ProviderRegistry.Invocation<?> invocation = registry.findService(request.getServiceName());
             if (invocation == null) {
                 Response failResp = Response.fail(String.format("%s 没有对应的处理服务", request.getServiceName()), request.getRequestId());
                 channelHandlerContext.writeAndFlush(failResp);

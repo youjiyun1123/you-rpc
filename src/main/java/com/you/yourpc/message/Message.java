@@ -7,8 +7,8 @@ import java.nio.charset.StandardCharsets;
 @Data
 public class Message {
     //魔数
-    public static final byte[] LOGIC = "小游".getBytes(StandardCharsets.UTF_8);
-    private byte[] logic;
+    public static final byte[] MAGIC = "小游".getBytes(StandardCharsets.UTF_8);
+    private byte[] magic;
 
     private byte messageType;
     private byte[] body;

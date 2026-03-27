@@ -5,14 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 
 @Slf4j
-public class RedisServiceRegister implements ServiceRegister{
+public class RedisServiceRegistry implements ServiceRegistry{
     @Override
-    public void init(RegisterConfig config) throws Exception {
+    public void init(RegistryConfig config) throws Exception {
         log.info("redis 注册中心还未实现");
     }
 
     @Override
-    public void registerService(ServiceMetadata metadata) {
+    public void registryService(ServiceMetadata metadata) {
         throw new UnsupportedOperationException();
     }
 

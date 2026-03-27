@@ -22,24 +22,31 @@ public class XYDecoder extends LengthFieldBasedFrameDecoder {
     @Override
     protected Object decode(ChannelHandlerContext ctx, ByteBuf in) throws Exception {
         ByteBuf frame = (ByteBuf) super.decode(ctx, in);
-        byte[] logic = new byte[Message.LOGIC.length];
-        //读魔数
-        frame.readBytes(logic);
-        if (!Arrays.equals(logic, Message.LOGIC)) {
-            throw new IllegalArgumentException("魔数不对！协议有问题");
+        if (frame == null) {
+            return null;
         }
-        //读类型
-        byte messageType = frame.readByte();
-        byte[] body = new byte[frame.readableBytes()];
-        //读剩下的字节
-        frame.readBytes(body);
-        if (Objects.equals(Message.MessageType.REQUEST.getCode(), messageType)) {
-            return deserializeRequest(body);
+        try {
+            byte[] logic = new byte[Message.MAGIC.length];
+            //读魔数
+            frame.readBytes(logic);
+            if (!Arrays.equals(logic, Message.MAGIC)) {
+                throw new IllegalArgumentException("魔数不对！协议有问题");
+            }
+            //读类型
+            byte messageType = frame.readByte();
+            byte[] body = new byte[frame.readableBytes()];
+            //读剩下的字节
+            frame.readBytes(body);
+            if (Objects.equals(Message.MessageType.REQUEST.getCode(), messageType)) {
+                return deserializeRequest(body);
+            }
+            if (Objects.equals(Message.MessageType.RESPONSE.getCode(), messageType)) {
+                return deserializeResponse(body);
+            }
+            throw new IllegalArgumentException("消息类型不支持" + messageType);
+        } finally {
+            frame.release();
         }
-        if (Objects.equals(Message.MessageType.RESPONSE.getCode(), messageType)) {
-            return deserializeResponse(body);
-        }
-        throw new IllegalArgumentException("消息类型不支持" + messageType);
     }
 
     private Object deserializeResponse(byte[] body) {

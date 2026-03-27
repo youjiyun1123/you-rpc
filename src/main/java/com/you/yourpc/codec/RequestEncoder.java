@@ -14,7 +14,7 @@ public class RequestEncoder extends MessageToByteEncoder<Request> {
     protected void encode(ChannelHandlerContext channelHandlerContext, Request request, ByteBuf out) throws Exception {
         // length //logic //type //body
 
-        byte[] logic = Message.LOGIC;
+        byte[] logic = Message.MAGIC;
         byte messageType = Message.MessageType.REQUEST.getCode();
         byte[] body = serializeRequest(request);
         int length=logic.length+Byte.BYTES+ body.length;

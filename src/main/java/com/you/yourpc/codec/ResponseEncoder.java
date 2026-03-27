@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 public class ResponseEncoder extends MessageToByteEncoder<Response> {
     @Override
     protected void encode(ChannelHandlerContext channelHandlerContext, Response response, ByteBuf out) throws Exception {
-        byte[] logic = Message.LOGIC;
+        byte[] logic = Message.MAGIC;
         byte messageType = Message.MessageType.RESPONSE.getCode();
         byte[] body = serializeResponse(response);
         int length=logic.length+Byte.BYTES+ body.length;

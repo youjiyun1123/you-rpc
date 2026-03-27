@@ -9,7 +9,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-public class ProviderRegister {
+public class ProviderRegistry {
     private final Map<String, Invocation<?>> serviceInstanceMap = new ConcurrentHashMap<>();
 
     public <I> void register(Class<I> interfaceClass, I serviceInstance) {

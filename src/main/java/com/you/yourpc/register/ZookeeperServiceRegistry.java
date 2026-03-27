@@ -9,19 +9,17 @@ import org.apache.curator.x.discovery.ServiceDiscoveryBuilder;
 import org.apache.curator.x.discovery.ServiceInstance;
 import org.apache.curator.x.discovery.details.JsonInstanceSerializer;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 @Slf4j
-public class ZookeeperServiceRegister implements ServiceRegister {
+public class ZookeeperServiceRegistry implements ServiceRegistry {
     private static final String BASE_PATH = "/you/rpc";
 
     private CuratorFramework client;
     private ServiceDiscovery<ServiceMetadata> discovery;
 
     @Override
-    public void init(RegisterConfig config) throws Exception {
+    public void init(RegistryConfig config) throws Exception {
         client = CuratorFrameworkFactory.builder()
                 .connectString(config.getConnectString())
                 .sessionTimeoutMs(30000)
@@ -39,7 +37,7 @@ public class ZookeeperServiceRegister implements ServiceRegister {
     }
 
     @Override
-    public void registerService(ServiceMetadata metadata) {
+    public void registryService(ServiceMetadata metadata) {
         try {
             ServiceInstance<ServiceMetadata> instance = ServiceInstance.<ServiceMetadata>builder().address(metadata.getHost())
                     .port(metadata.getPort())
