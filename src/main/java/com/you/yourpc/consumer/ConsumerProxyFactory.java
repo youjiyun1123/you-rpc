@@ -4,6 +4,9 @@ import com.you.yourpc.api.Add;
 import com.you.yourpc.api.exception.RpcException;
 import com.you.yourpc.codec.RequestEncoder;
 import com.you.yourpc.codec.XYDecoder;
+import com.you.yourpc.loadbalance.LoadBalancer;
+import com.you.yourpc.loadbalance.RandomLoadBalancer;
+import com.you.yourpc.loadbalance.RoundRobinLoadBalancer;
 import com.you.yourpc.message.Request;
 import com.you.yourpc.message.Response;
 import com.you.yourpc.provider.AddImpl;
@@ -55,7 +58,8 @@ public class ConsumerProxyFactory {
                 });
         return bootstrap;
     }
-    private class ConsumerHandler extends SimpleChannelInboundHandler<Response>{
+
+    private class ConsumerHandler extends SimpleChannelInboundHandler<Response> {
         @Override
         protected void channelRead0(ChannelHandlerContext channelHandlerContext, Response response) throws Exception {
             CompletableFuture<Response> responseFuture = inFlightRequestTable.remove(response.getRequestId());
@@ -65,6 +69,7 @@ public class ConsumerProxyFactory {
             }
             responseFuture.complete(response);
         }
+
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
             log.info("地址:{}连接了", ctx.channel().remoteAddress());
@@ -81,18 +86,32 @@ public class ConsumerProxyFactory {
             super.exceptionCaught(ctx, cause);
         }
     }
+
     public <I> I createConsumerProxy(Class<I> interfaceClass) {
         return (I) Proxy.newProxyInstance(Thread.currentThread().getContextClassLoader(),
                 new Class[]{interfaceClass},
-                new ConsumerInvocationHandler(interfaceClass)
+                new ConsumerInvocationHandler(interfaceClass,createLoadBalancer())
         );
+    }
+
+    private LoadBalancer createLoadBalancer() {
+        switch (this.consumerProperties.getLoadBalancerPolicy()) {
+            case "robin":
+                return new RoundRobinLoadBalancer();
+            case "random":
+                return new RandomLoadBalancer();
+            default:
+                throw new IllegalArgumentException(this.consumerProperties.getLoadBalancerPolicy() + "负载均衡不支持");
+        }
     }
 
     public class ConsumerInvocationHandler implements InvocationHandler {
         final Class<?> interfaceClass;
+        final LoadBalancer loadBalancer;
 
-        public ConsumerInvocationHandler(Class<?> interfaceClass) {
+        public ConsumerInvocationHandler(Class<?> interfaceClass, LoadBalancer loadBalancer) {
             this.interfaceClass = interfaceClass;
+            this.loadBalancer = loadBalancer;
         }
 
         @Override
@@ -106,7 +125,7 @@ public class ConsumerProxyFactory {
                 if (serviceMetadata.isEmpty()) {
                     throw new RpcException(interfaceClass.getName() + "没有对应的provider");
                 }
-                ServiceMetadata providerMetadata = serviceMetadata.get(0);
+                ServiceMetadata providerMetadata = loadBalancer.select(serviceMetadata);
 
                 Channel channel = manager.getChannel(providerMetadata.getHost(), providerMetadata.getPort());
                 if (channel == null) {
