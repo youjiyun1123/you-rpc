@@ -2,6 +2,8 @@ package com.you.yourpc.provider;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,6 +25,9 @@ public class ProviderRegister {
         return serviceInstanceMap.get(serviceName);
     }
 
+    public List<String> allServiceName(){
+        return new ArrayList<>(this.serviceInstanceMap.keySet());
+    }
     public static class Invocation<I> {
         final I serviceInstance;
         final Class<I> interfaceClass;

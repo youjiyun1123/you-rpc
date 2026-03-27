@@ -6,6 +6,7 @@ import com.you.yourpc.codec.RequestEncoder;
 import com.you.yourpc.codec.XYDecoder;
 import com.you.yourpc.message.Request;
 import com.you.yourpc.message.Response;
+import com.you.yourpc.register.RegisterConfig;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -22,13 +23,19 @@ import java.util.concurrent.TimeUnit;
 
 public class ConsumerApp {
     public static void main(String[] args) throws Exception {
-        ConsumerProxyFactory consumerProxyFactory = new ConsumerProxyFactory();
-        for (int i = 0; i < 10; i++) {
-            Add addConsumer = consumerProxyFactory.createConsumerProxy(Add.class);
-            System.out.println(addConsumer.add(1, 2));
-            System.out.println(addConsumer.add(11, 22));
+        RegisterConfig registerConfig=new RegisterConfig();
+        registerConfig.setRegisterType("zookeeper");
+        registerConfig.setConnectString("127.0.0.1:2181");
+        ConsumerProxyFactory consumerProxyFactory = new ConsumerProxyFactory(registerConfig);
+        Add addConsumer = consumerProxyFactory.createConsumerProxy(Add.class);
+        while (true){
+            try {
+                System.out.println(addConsumer.add(1, 2));
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+            Thread.sleep(1000);
         }
-
 
     }
 
